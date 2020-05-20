@@ -9,27 +9,45 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         self.ram = [0] * 256
+        self.reg = [0] * 8
+        self.pc = 0
 
-    def load(self):
+    def ram_read(self, mar):
+        return self.ram[mar]
+
+    def ram_write(self, mar, mdr):
+        self.ram[mar] = mdr
+
+    def load(self, file_name):
         """Load a program into memory."""
 
         address = 0
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010,  # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111,  # PRN R0
-            0b00000000,
-            0b00000001,  # HLT
-        ]
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010,  # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111,  # PRN R0
+        #     0b00000000,
+        #     0b00000001,  # HLT
+        # ]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        # for instruction in program:
+        #     self.ram[address] = instruction
+        #     address += 1
+
+        with open(sys.argv[1]) as f:
+            for line in f:
+                string_val = line.split("#")[0].strip()
+                if string_val == '':
+                    continue
+                v = int(string_val, 2)
+                # print[v]
+                self.ram[address] = v
+                address += 1
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -62,4 +80,38 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+
+        HLT = 0b00000001
+        LDI = 0b10000010
+        PRN = 0b01000111
+        MULT = 0b10100010
+
+        running = True
+
+        while running:
+            instruction = self.ram_read(self.pc)
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
+            # self.trace()
+            if instruction == HLT:
+                running = False
+                self.pc += 1
+                sys.exit()
+
+            elif instruction == LDI:
+                self.reg[operand_a] = operand_b
+                self.pc += 3
+                # print(instruction, self.pc)
+                # print(self.reg, self.ram)
+
+            elif instruction == PRN:
+                print(self.reg[operand_a])
+                self.pc += 2
+            elif instruction == MULT:
+                print(self.reg[operand_a] * self.reg[operand_b])
+                self.pc += 3
+
+            else:
+                print(f'unknown instruction {instruction, LDI }')
+                running: False
+                sys.exit()
