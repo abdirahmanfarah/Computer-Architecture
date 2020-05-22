@@ -15,9 +15,6 @@ class CPU:
         self.pc = 0
         self.reg[SP] = 0xF4
         self.flag = [0] * 8
-        self.flag_equal = 0
-        self.flag_less = 0
-        self.flag_greater = 0
 
     def ram_read(self, mar):
         return self.ram[mar]
@@ -58,6 +55,9 @@ class CPU:
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
+        flag_equal = 0
+        flag_less = 0
+        flag_greater = 0
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
@@ -65,14 +65,17 @@ class CPU:
         elif op == "MULT":
             self.reg[reg_a] *= self.reg[reg_b]
         elif op == "CMP":
-            if self.reg[reg_a] = self.reg[reg_b]:
-                self.flag_equal = 1
+            if self.reg[reg_a] == self.reg[reg_b]:
+                flag_equal = 1
+                self.flag[0] = flag_equal
             elif self.reg[reg_a] < self.reg[reg_b]:
-                self.flag_less = 1
+                flag_less = 1
+                self.flag[1] = flag_less
             elif self.reg[reg_a] > self.reg[reg_b]:
-                self.flag_greater = 1
+                flag_greater = 1
+                self.flag[2] = flag_greater
             else:
-                return 0
+                self.flag[0] = flag_equal
 
         else:
             raise Exception("Unsupported ALU operation")
@@ -109,6 +112,10 @@ class CPU:
         CALL = 0b01010000
         RET = 0b00010001
         ADD = 0b10100000
+        CMP = 0b10100111
+        JMP = 0b01010100
+        JEQ = 0b01010101
+        JNE = 0b01010110
 
         running = True
         # instruction = None
@@ -172,6 +179,24 @@ class CPU:
                 top_of_stack_addr = self.reg[SP]
                 self.pc = self.ram[top_of_stack_addr]
                 self.reg[SP] += 1
+
+            elif instruction == CMP:
+                self.alu("CMP", operand_a, operand_b)
+                self.pc += 3
+            elif instruction == JMP:
+                # top_of_stack_addr = self.reg[SP]
+                self.pc = self.reg[operand_a]
+
+            elif instruction == JEQ:
+                if self.flag[0] == 1:
+                    self.pc = self.reg[operand_a]
+                else:
+                    self.pc += 2
+            elif instruction == JNE:
+                if self.flag[0] == 0:
+                    self.pc = self.reg[operand_a]
+                else:
+                    self.pc += 2
 
             else:
                 # print(self.pc, self.reg, self.ram, "pc, ram, reg")
