@@ -11,6 +11,8 @@ class CPU:
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0
+        self.SP = 7
+        self.reg[7] = 0xF4
 
     def ram_read(self, mar):
         return self.ram[mar]
@@ -22,22 +24,6 @@ class CPU:
         """Load a program into memory."""
 
         address = 0
-
-        # For now, we've just hardcoded a program:
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010,  # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111,  # PRN R0
-        #     0b00000000,
-        #     0b00000001,  # HLT
-        # ]
-
-        # for instruction in program:
-        #     self.ram[address] = instruction
-        #     address += 1
         with open(sys.argv[1]) as f:
             for line in f:
                 string_val = line.split("#")[0].strip()
@@ -82,6 +68,11 @@ class CPU:
         LDI = 0b10000010
         PRN = 0b01000111
         MULT = 0b10100010
+        PUSH = 0b01000101
+        POP = 0b01000110
+        CALL = 0b01010000
+        RET = 0b00010001
+        ADD = 0b10100000
 
         running = True
 
@@ -98,8 +89,6 @@ class CPU:
             elif instruction == LDI:
                 self.reg[operand_a] = operand_b
                 self.pc += 3
-                # print(instruction, self.pc)
-                # print(self.reg, self.ram)
 
             elif instruction == PRN:
                 print(self.reg[operand_a])
@@ -107,6 +96,42 @@ class CPU:
             elif instruction == MULT:
                 print(self.reg[operand_a] * self.reg[operand_b])
                 self.pc += 3
+            elif instruction == ADD:
+                self.alu("ADD", operand_a, operand_b)
+                self.pc += 3
+
+            elif instruction == POP:
+                top_of_stack_addr = self.reg[self.SP]
+
+                value = self.ram_read(top_of_stack_addr)
+
+                self.reg[operand_a] = value
+
+                self.reg[self.SP] += 1
+
+                self.pc += 2
+
+            elif instruction == PUSH:
+                # Decrement the SP
+                self.reg[self.SP] -= 1
+                # Get value out of register
+                data = self.reg[operand_a]
+                # store value in memory at SP
+                top_of_stack_addr = self.reg[self.SP]
+                self.ram_write(top_of_stack_addr, data)
+                self.pc += 2
+            elif instruction == CALL:
+                get_addr = self.pc + 2
+
+                # Push it on the Stack
+                self.reg[self.SP] -= 1
+                top_of_stack_addr = self.reg[self.SP]
+                self.ram[top_of_stack_addr] = get_addr
+                self.pc = self.reg[operand_a]
+            elif instruction == RET:
+                top_of_stack_addr = self.reg[self.SP]
+                self.pc = self.ram[top_of_stack_addr]
+                self.reg[self.SP] += 1
 
             else:
                 print(f'unknown instruction {instruction, LDI }')
