@@ -13,6 +13,18 @@ class CPU:
         self.pc = 0
         self.SP = 7
         self.reg[7] = 0xF4
+        self.branch_table = {
+            0b00000001: self.HLT,
+            0b10000010: self.LDI,
+            0b01000111: self.PRN,
+            0b10100010: self.MULT,
+            0b01000101: self.PUSH,
+            0b01000110: self.POP,
+            0b01010000: self.CALL,
+            0b00010001: self.RET,
+            # 0b10100000: self.ADD,
+
+        }
 
     def ram_read(self, mar):
         return self.ram[mar]
@@ -63,77 +75,73 @@ class CPU:
 
         print()
 
+    def HLT(self):
+        sys.exit()
+
+    def LDI(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+
+        self.reg[operand_a] = operand_b
+        self.pc += 3
+
+    def PRN(self):
+        operand_a = self.ram_read(self.pc + 1)
+        print(self.reg[operand_a])
+        self.pc += 2
+
+    def MULT(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+
+        print(self.reg[operand_a] * self.reg[operand_b])
+        self.pc += 3
+
+    def PUSH(self):
+        operand_a = self.ram_read(self.pc + 1)
+        # Decrement the SP
+        self.reg[self.SP] -= 1
+        # Get value out of register
+        data = self.reg[operand_a]
+        # store value in memory at SP
+        top_of_stack_addr = self.reg[self.SP]
+        self.ram_write(top_of_stack_addr, data)
+        self.pc += 2
+
+    def POP(self):
+        operand_a = self.ram_read(self.pc + 1)
+
+        top_of_stack_addr = self.reg[self.SP]
+
+        value = self.ram_read(top_of_stack_addr)
+
+        self.reg[operand_a] = value
+
+        self.reg[self.SP] += 1
+
+        self.pc += 2
+
+    def CALL(self):
+
+        operand_a = self.ram_read(self.pc + 1)
+
+        get_addr = self.pc + 2
+
+        # Push it on the Stack
+        self.reg[self.SP] -= 1
+        top_of_stack_addr = self.reg[self.SP]
+        self.ram[top_of_stack_addr] = get_addr
+        self.pc = self.reg[operand_a]
+
+    def RET(self):
+        top_of_stack_addr = self.reg[self.SP]
+        self.pc = self.ram[top_of_stack_addr]
+        self.reg[self.SP] += 1
+
     def run(self):
-        HLT = 0b00000001
-        LDI = 0b10000010
-        PRN = 0b01000111
-        MULT = 0b10100010
-        PUSH = 0b01000101
-        POP = 0b01000110
-        CALL = 0b01010000
-        RET = 0b00010001
-        ADD = 0b10100000
 
         running = True
 
         while running:
             instruction = self.ram_read(self.pc)
-            operand_a = self.ram_read(self.pc + 1)
-            operand_b = self.ram_read(self.pc + 2)
-            # self.trace()
-            if instruction == HLT:
-                running = False
-                self.pc += 1
-                sys.exit()
-
-            elif instruction == LDI:
-                self.reg[operand_a] = operand_b
-                self.pc += 3
-
-            elif instruction == PRN:
-                print(self.reg[operand_a])
-                self.pc += 2
-            elif instruction == MULT:
-                print(self.reg[operand_a] * self.reg[operand_b])
-                self.pc += 3
-            elif instruction == ADD:
-                self.alu("ADD", operand_a, operand_b)
-                self.pc += 3
-
-            elif instruction == POP:
-                top_of_stack_addr = self.reg[self.SP]
-
-                value = self.ram_read(top_of_stack_addr)
-
-                self.reg[operand_a] = value
-
-                self.reg[self.SP] += 1
-
-                self.pc += 2
-
-            elif instruction == PUSH:
-                # Decrement the SP
-                self.reg[self.SP] -= 1
-                # Get value out of register
-                data = self.reg[operand_a]
-                # store value in memory at SP
-                top_of_stack_addr = self.reg[self.SP]
-                self.ram_write(top_of_stack_addr, data)
-                self.pc += 2
-            elif instruction == CALL:
-                get_addr = self.pc + 2
-
-                # Push it on the Stack
-                self.reg[self.SP] -= 1
-                top_of_stack_addr = self.reg[self.SP]
-                self.ram[top_of_stack_addr] = get_addr
-                self.pc = self.reg[operand_a]
-            elif instruction == RET:
-                top_of_stack_addr = self.reg[self.SP]
-                self.pc = self.ram[top_of_stack_addr]
-                self.reg[self.SP] += 1
-
-            else:
-                print(f'unknown instruction {instruction, LDI }')
-                running: False
-                sys.exit()
+            self.branch_table[instruction]()
