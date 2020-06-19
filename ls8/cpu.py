@@ -22,7 +22,7 @@ class CPU:
             0b01000110: self.POP,
             0b01010000: self.CALL,
             0b00010001: self.RET,
-            # 0b10100000: self.ADD,
+            0b10100000: self.ADD,
 
         }
 
@@ -52,6 +52,8 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         # elif op == "SUB": etc
+        elif op == "MULT":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -94,7 +96,14 @@ class CPU:
         operand_a = self.ram_read(self.pc + 1)
         operand_b = self.ram_read(self.pc + 2)
 
-        print(self.reg[operand_a] * self.reg[operand_b])
+        self.alu("MULT", operand_a, operand_b)
+        self.pc += 3
+
+    def ADD(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+
+        self.alu("ADD", operand_a, operand_b)
         self.pc += 3
 
     def PUSH(self):
@@ -123,14 +132,16 @@ class CPU:
 
     def CALL(self):
 
-        operand_a = self.ram_read(self.pc + 1)
+        # Push it on the Stack
+        self.reg[self.SP] -= 1
 
         get_addr = self.pc + 2
 
-        # Push it on the Stack
-        self.reg[self.SP] -= 1
         top_of_stack_addr = self.reg[self.SP]
+
         self.ram[top_of_stack_addr] = get_addr
+
+        operand_a = self.ram_read(self.pc + 1)
         self.pc = self.reg[operand_a]
 
     def RET(self):
@@ -143,5 +154,5 @@ class CPU:
         running = True
 
         while running:
-            instruction = self.ram_read(self.pc)
-            self.branch_table[instruction]()
+            IR = self.ram_read(self.pc)
+            self.branch_table[IR]()
